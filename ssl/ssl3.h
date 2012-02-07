@@ -481,6 +481,10 @@ typedef struct ssl3_state_st
 	/* Set if we saw the Next Protocol Negotiation extension from our peer. */
 	int next_proto_neg_seen;
 #endif
+#ifndef OPENSSL_NO_TACK
+	/* Set if we saw the tack extension from our peer. */
+	int tack_seen;
+#endif
 
 	struct	{
 		/* actually only needs to be 16+20 */

@@ -1627,6 +1627,20 @@ void SSL_CTX_set_next_proto_select_cb(SSL_CTX *ctx, int (*cb) (SSL *s, unsigned 
 	ctx->next_proto_select_cb_arg = arg;
 	}
 # endif
+#ifndef OPENSSL_NO_TACK
+int SSL_CTX_set_tack_extension(SSL_CTX *ctx, unsigned char *tackext, const unsigned int tackextlen)
+	{
+	if (tackextlen > (SSL_TACKEXT_MAXSIZE))
+	{
+		/* !!! SOME ERROR MSG */
+		return 0;
+	}
+	memcpy(ctx->tackext, tackext, tackextlen);
+	ctx->tackextlen = tackextlen;
+	return 1;	
+	}
+
+#endif
 #endif
 
 int SSL_export_keying_material(SSL *s, unsigned char *out, size_t olen,

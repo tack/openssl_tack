@@ -950,6 +950,12 @@ struct ssl_ctx_st
 	int (*tlsext_opaque_prf_input_callback)(SSL *, void *peerinput, size_t len, void *arg);
 	void *tlsext_opaque_prf_input_callback_arg;
 # endif
+#ifndef OPENSSL_NO_TACK
+ /* 1 TACK, 10 Break Sigs, 1 byte type, 1 byte TACKlen, 2 bytes BreakLen */
+#define SSL_TACKEXT_MAXSIZE (4 + 179 + (10*137))
+	unsigned char tackext[SSL_TACKEXT_MAXSIZE];
+	unsigned int tackextlen;
+#endif
 #endif
 
 #ifndef OPENSSL_NO_PSK
@@ -1056,6 +1062,16 @@ void SSL_get0_next_proto_negotiated(const SSL *s,
 #define OPENSSL_NPN_UNSUPPORTED	0
 #define OPENSSL_NPN_NEGOTIATED	1
 #define OPENSSL_NPN_NO_OVERLAP	2
+#endif
+
+#ifndef OPENSSL_NO_TACK
+/* Set tackextlen=0 to never respond with TACK_Extension
+   Set to empty TACK_Extension (4 bytes of zeros) to respond w/empty ext.
+*/
+int SSL_CTX_set_tack_extension(SSL_CTX *ctx, 
+			unsigned char *tackext, const unsigned int tackextlen);
+int SSL_CTX_use_tack_files(SSL_CTX *ctx, 
+			const char *tackfile, const char *breakfile);
 #endif
 
 #ifndef OPENSSL_NO_PSK

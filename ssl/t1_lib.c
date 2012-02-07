@@ -436,7 +436,7 @@ unsigned char *ssl_add_clienthello_tlsext(SSL *s, unsigned char *p, unsigned cha
 	/* we add SRP username the first time only if we have one! */
 	if (s->srp_ctx.login != NULL)
 		{/* Add TLS extension SRP username to the Client Hello message */
-		int login_len = MIN(strlen(s->srp_ctx.login) + 1, 255);
+		int login_len = MIN(strlen(s->srp_ctx.login), 255);
 		long lenmax; 
 
 		if ((lenmax = limit - ret - 5) < 0) return NULL; 
@@ -678,6 +678,9 @@ unsigned char *ssl_add_serverhello_tlsext(SSL *s, unsigned char *p, unsigned cha
 #ifndef OPENSSL_NO_NEXTPROTONEG
 	int next_proto_neg_seen;
 #endif
+#ifndef OPENSSL_NO_TACK
+	int tack_seen;
+#endif
 
 	/* don't add extensions for SSLv3, unless doing secure renegotiation */
 	if (s->version == SSL3_VERSION && !s->s3->send_connection_binding)
@@ -850,6 +853,24 @@ unsigned char *ssl_add_serverhello_tlsext(SSL *s, unsigned char *p, unsigned cha
 			}
 		}
 #endif
+#ifndef OPENSSL_NO_TACK
+	tack_seen = s->s3->tack_seen;
+	s->s3->tack_seen = 0;
+	if (tack_seen && s->ctx->tackextlen)
+		{
+		const unsigned char *tackext;
+		unsigned int tackextlen;
+		
+		tackext = s->ctx->tackext;
+		tackextlen = s->ctx->tackextlen;	
+		if ((long)(limit - ret - 4 - tackextlen) < 0) return NULL;
+		s2n(TLSEXT_TYPE_tack,ret);
+		s2n(s->ctx->tackextlen,ret);
+		memcpy(ret, tackext, tackextlen);
+		ret += tackextlen;		
+		s->s3->tack_seen = 1;	
+		}
+#endif
 
 	if ((extdatalen = ret-p-2)== 0) 
 		return p;
@@ -872,6 +893,10 @@ int ssl_parse_clienthello_tlsext(SSL *s, unsigned char **p, unsigned char *d, in
 #ifndef OPENSSL_NO_NEXTPROTONEG
 	s->s3->next_proto_neg_seen = 0;
 #endif
+#ifndef OPENSSL_NO_NEXTPROTONEG
+	s->s3->tack_seen = 0;
+#endif
+
 
 #ifndef OPENSSL_NO_HEARTBEATS
 	s->tlsext_heartbeat &= ~(SSL_TLSEXT_HB_ENABLED |
@@ -1308,6 +1333,17 @@ int ssl_parse_clienthello_tlsext(SSL *s, unsigned char **p, unsigned char *d, in
 			 * in the Hello protocol round, well before a new
 			 * Finished message could have been computed.) */
 			s->s3->next_proto_neg_seen = 1;
+			}
+#endif
+#ifndef OPENSSL_NO_TACK
+		else if (type == TLSEXT_TYPE_tack)
+			{
+				if (size != 0)
+					{
+					*al = SSL_AD_DECODE_ERROR;
+					return 0;
+					}				
+				s->s3->tack_seen = 1;
 			}
 #endif
 

@@ -776,4 +776,143 @@ end:
 	if (in != NULL) BIO_free(in);
 	return(ret);
 	}
+	
+
+#ifndef OPENSSL_NO_TACK
+/* Read a file that contains a TACK, and a file that contains a sequence
+ * of Break Signatures, that should be sent to the client via a "tack"
+ * TLS Extension, if requested..
+ */
+
+#define MAX_BREAK_SIGS 10
+
+int SSL_CTX_use_tack_files(SSL_CTX *ctx, const char *tackfile,const char *breakfile)
+	{
+	BIO *btack = NULL;
+	BIO *bbreak = NULL;
+	int ret=0;	
+	
+	/* arguments for PEM_read_bio */
+	char* name = 0;
+	char* header = 0;
+	unsigned char* data = 0;
+	long len;
+	
+	/* TACK_Extension buffer.  We will fill this buffer as we read
+	   the input files, then it will be copied into the SSL CTX. */
+	unsigned char tackext[SSL_TACKEXT_MAXSIZE];
+	int tackextlen;
+	
+	/* local variables for the break signatures loop */
+	unsigned char* pbreaksiglen;
+	int numBreakSigs = 0;
+	
+	tackext[0] = 1; /* TACK_Extension_Type = v1 */
+	tackext[1] = 0; /* In case there's no TACK, tacklen=0 */
+	tackextlen = 2; /* In case there's no TACK, len=|type+tacklen| */
+	
+	if (tackfile) 
+		{
+		btack=BIO_new(BIO_s_file_internal());
+		if (btack == NULL)
+			{
+			/* !!!TODO: Provide different error code in ssl.h/ssl_err.c */
+			SSLerr(SSL_F_SSL_CTX_USE_CERTIFICATE_CHAIN_FILE,ERR_R_BUF_LIB);
+			goto end;
+			}
+		if (BIO_read_filename(btack,tackfile) <= 0)
+			{
+			/* !!!TODO: Provide different error code in ssl.h/ssl_err.c */
+			SSLerr(SSL_F_SSL_CTX_USE_CERTIFICATE_CHAIN_FILE,ERR_R_SYS_LIB);
+			goto end;
+			}
+		if (PEM_read_bio(btack, &name, &header, &data, &len) == 0)
+			{
+			/* !!!TODO: Provide different error code in ssl.h/ssl_err.c */
+			SSLerr(SSL_F_SSL_CTX_USE_CERTIFICATE_CHAIN_FILE,ERR_R_PEM_LIB);	
+			goto end;
+			}
+		if (strcmp(name, "TACK") != 0)
+			{
+			/* !!!TODO: Provide different error code in ssl.h/ssl_err.c */
+			SSLerr(SSL_F_SSL_CTX_USE_CERTIFICATE_CHAIN_FILE,ERR_R_SYS_LIB);
+			goto end;			
+			}
+		if (len != 179)			
+			{
+			/* !!!TODO: Provide different error code in ssl.h/ssl_err.c */
+			SSLerr(SSL_F_SSL_CTX_USE_CERTIFICATE_CHAIN_FILE,ERR_R_SYS_LIB);
+			goto end;			
+			}	
+		if (tackextlen+179 > SSL_TACKEXT_MAXSIZE)
+			goto end;
+		tackext[1] = 179; /* tacklen = sizeof(TACK) */
+		memcpy(&tackext[tackextlen], data, 179);
+		tackextlen += 179;
+		}
+	
+	/* In case there's no break signatures, breaklen=0x0000 */
+	pbreaksiglen = &tackext[tackextlen]; /* save a ptr to breaksiglen */
+	if (tackextlen+2 > SSL_TACKEXT_MAXSIZE)
+		goto end;
+	tackext[tackextlen] = 0;
+	tackext[tackextlen+1] = 0;
+	tackextlen += 2;
+	
+	if (breakfile)
+		{
+		bbreak=BIO_new(BIO_s_file_internal());
+		if (bbreak == NULL)
+			{
+			/* !!!TODO: Provide different error code in ssl.h/ssl_err.c */
+			SSLerr(SSL_F_SSL_CTX_USE_CERTIFICATE_CHAIN_FILE,ERR_R_BUF_LIB);
+			goto end;
+			}
+		if (BIO_read_filename(bbreak,breakfile) <= 0)
+			{
+			/* !!!TODO: Provide different error code in ssl.h/ssl_err.c */
+			SSLerr(SSL_F_SSL_CTX_USE_CERTIFICATE_CHAIN_FILE,ERR_R_SYS_LIB);
+			goto end;
+			}
+		for (numBreakSigs=0; numBreakSigs<MAX_BREAK_SIGS; numBreakSigs++) 
+			{
+			if (PEM_read_bio(bbreak, &name, &header, &data, &len) == 0)
+				{
+				/* There must be at least one break sig in this file */
+				if (numBreakSigs == 0)
+					{
+					/* !!!TODO: Provide different error code in ssl.h/ssl_err.c */
+					SSLerr(SSL_F_SSL_CTX_USE_CERTIFICATE_CHAIN_FILE,ERR_R_PEM_LIB);	
+					goto end;
+					}
+				else
+					break; /* We are at the end of this file */
+				}
+			if (strcmp(name, "TACK BREAK SIG") != 0)
+				{
+				/* !!!TODO: Provide different error code in ssl.h/ssl_err.c */
+				SSLerr(SSL_F_SSL_CTX_USE_CERTIFICATE_CHAIN_FILE,ERR_R_SYS_LIB);
+				goto end;
+				}
+			if (len != 137)			
+				{
+				/* !!!TODO: Provide different error code in ssl.h/ssl_err.c */
+				SSLerr(SSL_F_SSL_CTX_USE_CERTIFICATE_CHAIN_FILE,ERR_R_SYS_LIB);
+				goto end;			
+				}
+			if (tackextlen+137 > SSL_TACKEXT_MAXSIZE)
+				goto end;
+			memcpy(&tackext[tackextlen], data, 137);
+			tackextlen += 137;
+			}
+		s2n((numBreakSigs*137), pbreaksiglen);
+		}
+	ret = SSL_CTX_set_tack_extension(ctx, tackext, tackextlen);
+
+end:
+	if (btack != NULL) BIO_free(btack);
+	if (bbreak != NULL) BIO_free(bbreak);
+	return(ret);
+	}
+#endif
 #endif

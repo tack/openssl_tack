@@ -226,6 +226,11 @@ extern "C" {
 #define TLSEXT_TYPE_next_proto_neg		13172
 #endif
 
+#ifndef OPENSSL_NO_TACK
+/* This is not an IANA defined extension number */
+#define TLSEXT_TYPE_tack		62208
+#endif
+
 /* NameType value from RFC 3546 */
 #define TLSEXT_NAMETYPE_host_name 0
 /* status request value from RFC 3546 */
