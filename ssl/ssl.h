@@ -952,7 +952,7 @@ struct ssl_ctx_st
 # endif
 #ifndef OPENSSL_NO_TACK
  /* 1 TACK, 10 Break Sigs, 1 byte type, 1 byte TACKlen, 2 bytes BreakLen */
-#define SSL_TACKEXT_MAXSIZE (4 + 179 + (10*137))
+#define SSL_TACKEXT_MAXSIZE (4 + 168 + (10*129))
 	unsigned char tackext[SSL_TACKEXT_MAXSIZE];
 	unsigned int tackextlen;
 #endif

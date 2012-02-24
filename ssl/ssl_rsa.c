@@ -838,17 +838,17 @@ int SSL_CTX_use_tack_files(SSL_CTX *ctx, const char *tackfile,const char *breakf
 			SSLerr(SSL_F_SSL_CTX_USE_CERTIFICATE_CHAIN_FILE,ERR_R_SYS_LIB);
 			goto end;			
 			}
-		if (len != 179)			
+		if (len != 168)			
 			{
 			/* !!!TODO: Provide different error code in ssl.h/ssl_err.c */
 			SSLerr(SSL_F_SSL_CTX_USE_CERTIFICATE_CHAIN_FILE,ERR_R_SYS_LIB);
 			goto end;			
 			}	
-		if (tackextlen+179 > SSL_TACKEXT_MAXSIZE)
+		if (tackextlen+168 > SSL_TACKEXT_MAXSIZE)
 			goto end;
-		tackext[1] = 179; /* tacklen = sizeof(TACK) */
-		memcpy(&tackext[tackextlen], data, 179);
-		tackextlen += 179;
+		tackext[1] = 168; /* tacklen = sizeof(TACK) */
+		memcpy(&tackext[tackextlen], data, 168);
+		tackextlen += 168;
 		}
 	
 	/* In case there's no break signatures, breaklen=0x0000 */
@@ -894,18 +894,18 @@ int SSL_CTX_use_tack_files(SSL_CTX *ctx, const char *tackfile,const char *breakf
 				SSLerr(SSL_F_SSL_CTX_USE_CERTIFICATE_CHAIN_FILE,ERR_R_SYS_LIB);
 				goto end;
 				}
-			if (len != 137)			
+			if (len != 129)			
 				{
 				/* !!!TODO: Provide different error code in ssl.h/ssl_err.c */
 				SSLerr(SSL_F_SSL_CTX_USE_CERTIFICATE_CHAIN_FILE,ERR_R_SYS_LIB);
 				goto end;			
 				}
-			if (tackextlen+137 > SSL_TACKEXT_MAXSIZE)
+			if (tackextlen+129 > SSL_TACKEXT_MAXSIZE)
 				goto end;
-			memcpy(&tackext[tackextlen], data, 137);
-			tackextlen += 137;
+			memcpy(&tackext[tackextlen], data, 129);
+			tackextlen += 129;
 			}
-		s2n((numBreakSigs*137), pbreaksiglen);
+		s2n((numBreakSigs*129), pbreaksiglen);
 		}
 	ret = SSL_CTX_set_tack_extension(ctx, tackext, tackextlen);
 
