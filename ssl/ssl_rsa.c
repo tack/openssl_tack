@@ -784,7 +784,8 @@ end:
  * TLS Extension, if requested..
  */
 
-#define MAX_BREAK_SIGS 10
+/* 15 break sigs of 129 bytes fits into 2 KB */
+#define MAX_BREAK_SIGS 15 
 
 int SSL_CTX_use_tack_files(SSL_CTX *ctx, const char *tackfile,const char *breakfile)
 	{
@@ -807,7 +808,7 @@ int SSL_CTX_use_tack_files(SSL_CTX *ctx, const char *tackfile,const char *breakf
 	unsigned char* pbreaksiglen;
 	int numBreakSigs = 0;
 	
-	tackext[0] = 1; /* TACK_Extension_Type = v1 */
+	tackext[0] = 0; /* In case there's no TACK, tacklen=0 */
 	tackext[1] = 0; /* In case there's no TACK, tacklen=0 */
 	tackextlen = 2; /* In case there's no TACK, len=|type+tacklen| */
 	
