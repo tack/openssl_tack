@@ -432,25 +432,29 @@ unsigned char *ssl_add_clienthello_tlsext(SSL *s, unsigned char *p, unsigned cha
         }
 
 #ifndef OPENSSL_NO_SRP
-#define MIN(x,y) (((x)<(y))?(x):(y))
-	/* we add SRP username the first time only if we have one! */
+	/* Add SRP username if there is one */
 	if (s->srp_ctx.login != NULL)
-		{/* Add TLS extension SRP username to the Client Hello message */
-		int login_len = MIN(strlen(s->srp_ctx.login) + 1, 255);
-		long lenmax; 
+		{ /* Add TLS extension SRP username to the Client Hello message */
 
-		if ((lenmax = limit - ret - 5) < 0) return NULL; 
-		if (login_len > lenmax) return NULL;
-		if (login_len > 255)
+		int login_len = strlen(s->srp_ctx.login);	
+		if (login_len > 255 || login_len == 0)
 			{
 			SSLerr(SSL_F_SSL_ADD_CLIENTHELLO_TLSEXT, ERR_R_INTERNAL_ERROR);
 			return NULL;
-			}
+			} 
+
+		/* check for enough space.
+		   4 for the srp type type and entension length
+		   1 for the srp user identity
+		   + srp user identity length 
+		*/
+		if ((limit - ret - 5 - login_len) < 0) return NULL; 
+
+		/* fill in the extension */
 		s2n(TLSEXT_TYPE_srp,ret);
 		s2n(login_len+1,ret);
-
-		(*ret++) = (unsigned char) MIN(strlen(s->srp_ctx.login), 254);
-		memcpy(ret, s->srp_ctx.login, MIN(strlen(s->srp_ctx.login), 254));
+		(*ret++) = (unsigned char) login_len;
+		memcpy(ret, s->srp_ctx.login, login_len);
 		ret+=login_len;
 		}
 #endif
@@ -1007,13 +1011,25 @@ int ssl_parse_clienthello_tlsext(SSL *s, unsigned char **p, unsigned char *d, in
 #ifndef OPENSSL_NO_SRP
 		else if (type == TLSEXT_TYPE_srp)
 			{
-			if (size > 0)
+			if (size <= 0 || ((len = data[0])) != (size -1))
 				{
-				len = data[0];
-				if ((s->srp_ctx.login = OPENSSL_malloc(len+1)) == NULL)
-					return -1;
-				memcpy(s->srp_ctx.login, &data[1], len);
-				s->srp_ctx.login[len]='\0';  
+				*al = SSL_AD_DECODE_ERROR;
+				return 0;
+				}
+			if (s->srp_ctx.login != NULL)
+				{
+				*al = SSL_AD_DECODE_ERROR;
+				return 0;
+				}
+			if ((s->srp_ctx.login = OPENSSL_malloc(len+1)) == NULL)
+				return -1;
+			memcpy(s->srp_ctx.login, &data[1], len);
+			s->srp_ctx.login[len]='\0';
+  
+			if (strlen(s->srp_ctx.login) != len) 
+				{
+				*al = SSL_AD_DECODE_ERROR;
+				return 0;
 				}
 			}
 #endif
@@ -2245,7 +2261,7 @@ static tls12_lookup tls12_sig[] = {
 #ifndef OPENSSL_NO_RSA
 	{EVP_PKEY_RSA, TLSEXT_signature_rsa},
 #endif
-#ifndef OPENSSL_NO_RSA
+#ifndef OPENSSL_NO_DSA
 	{EVP_PKEY_DSA, TLSEXT_signature_dsa},
 #endif
 #ifndef OPENSSL_NO_ECDSA
@@ -2279,6 +2295,8 @@ static int tls12_find_nid(int id, tls12_lookup *table, size_t tlen)
 int tls12_get_sigandhash(unsigned char *p, const EVP_PKEY *pk, const EVP_MD *md)
 	{
 	int sig_id, md_id;
+	if (!md)
+		return 0;
 	md_id = tls12_find_id(EVP_MD_type(md), tls12_md,
 				sizeof(tls12_md)/sizeof(tls12_lookup));
 	if (md_id == -1)
@@ -2449,7 +2467,10 @@ tls1_process_heartbeat(SSL *s)
 		*bp++ = TLS1_HB_RESPONSE;
 		s2n(payload, bp);
 		memcpy(bp, pl, payload);
-		
+		bp += payload;
+		/* Random padding */
+		RAND_pseudo_bytes(bp, padding);
+
 		r = ssl3_write_bytes(s, TLS1_RT_HEARTBEAT, buffer, 3 + payload + padding);
 
 		if (r >= 0 && s->msg_callback)
