@@ -227,14 +227,14 @@ int dtls1_do_write(SSL *s, int type)
 	unsigned int len, frag_off, mac_size, blocksize;
 
 	/* AHA!  Figure out the MTU, and stick to the right size */
-	if ( ! (SSL_get_options(s) & SSL_OP_NO_QUERY_MTU))
+	if (s->d1->mtu < dtls1_min_mtu() && !(SSL_get_options(s) & SSL_OP_NO_QUERY_MTU))
 		{
 		s->d1->mtu = 
 			BIO_ctrl(SSL_get_wbio(s), BIO_CTRL_DGRAM_QUERY_MTU, 0, NULL);
 
 		/* I've seen the kernel return bogus numbers when it doesn't know
 		 * (initial write), so just make sure we have a reasonable number */
-		if ( s->d1->mtu < dtls1_min_mtu())
+		if (s->d1->mtu < dtls1_min_mtu())
 			{
 			s->d1->mtu = 0;
 			s->d1->mtu = dtls1_guess_mtu(s->d1->mtu);
@@ -1478,8 +1478,9 @@ dtls1_process_heartbeat(SSL *s)
 		*bp++ = TLS1_HB_RESPONSE;
 		s2n(payload, bp);
 		memcpy(bp, pl, payload);
+		bp += payload;
 		/* Random padding */
-		RAND_pseudo_bytes(p, padding);
+		RAND_pseudo_bytes(bp, padding);
 
 		r = dtls1_write_bytes(s, TLS1_RT_HEARTBEAT, buffer, 3 + payload + padding);
 
