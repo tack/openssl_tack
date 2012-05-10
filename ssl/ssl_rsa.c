@@ -784,10 +784,12 @@ end:
  * TLS Extension, if requested..
  */
 
-/* 15 break sigs of 129 bytes fits into 2 KB */
-#define MAX_BREAK_SIGS 15 
+/* 8 break sigs of 128 bytes fits into 1 KB */
+#define MAX_BREAK_SIGS 8 
 
-int SSL_CTX_use_tack_files(SSL_CTX *ctx, const char *tackfile,const char *breakfile)
+int SSL_CTX_use_tack_files(SSL_CTX *ctx, const char *tackfile,
+							const char *breakfile, 
+							unsigned int pin_activation)
 	{
 	BIO *btack = NULL;
 	BIO *bbreak = NULL;
@@ -809,8 +811,7 @@ int SSL_CTX_use_tack_files(SSL_CTX *ctx, const char *tackfile,const char *breakf
 	int numBreakSigs = 0;
 	
 	tackext[0] = 0; /* In case there's no TACK, tacklen=0 */
-	tackext[1] = 0; /* In case there's no TACK, tacklen=0 */
-	tackextlen = 2; /* In case there's no TACK, len=|type+tacklen| */
+	tackextlen = 1; /* In case there's no TACK, len=|type+tacklen| */
 	
 	if (tackfile) 
 		{
@@ -839,17 +840,17 @@ int SSL_CTX_use_tack_files(SSL_CTX *ctx, const char *tackfile,const char *breakf
 			SSLerr(SSL_F_SSL_CTX_USE_CERTIFICATE_CHAIN_FILE,ERR_R_SYS_LIB);
 			goto end;			
 			}
-		if (len != 168)			
+		if (len != 166)			
 			{
 			/* !!!TODO: Provide different error code in ssl.h/ssl_err.c */
 			SSLerr(SSL_F_SSL_CTX_USE_CERTIFICATE_CHAIN_FILE,ERR_R_SYS_LIB);
 			goto end;			
 			}	
-		if (tackextlen+168 > SSL_TACKEXT_MAXSIZE)
+		if (tackextlen+166 > SSL_TACKEXT_MAXSIZE)
 			goto end;
-		tackext[1] = 168; /* tacklen = sizeof(TACK) */
-		memcpy(&tackext[tackextlen], data, 168);
-		tackextlen += 168;
+		tackext[0] = 166; /* tacklen = sizeof(TACK) */
+		memcpy(&tackext[tackextlen], data, 166);
+		tackextlen += 166;
 		}
 	
 	/* In case there's no break signatures, breaklen=0x0000 */
@@ -895,19 +896,29 @@ int SSL_CTX_use_tack_files(SSL_CTX *ctx, const char *tackfile,const char *breakf
 				SSLerr(SSL_F_SSL_CTX_USE_CERTIFICATE_CHAIN_FILE,ERR_R_SYS_LIB);
 				goto end;
 				}
-			if (len != 129)			
+			if (len != 128)			
 				{
 				/* !!!TODO: Provide different error code in ssl.h/ssl_err.c */
 				SSLerr(SSL_F_SSL_CTX_USE_CERTIFICATE_CHAIN_FILE,ERR_R_SYS_LIB);
 				goto end;			
 				}
-			if (tackextlen+129 > SSL_TACKEXT_MAXSIZE)
+			if (tackextlen+128 > SSL_TACKEXT_MAXSIZE)
 				goto end;
-			memcpy(&tackext[tackextlen], data, 129);
-			tackextlen += 129;
+			memcpy(&tackext[tackextlen], data, 128);
+			tackextlen += 128;
 			}
-		s2n((numBreakSigs*129), pbreaksiglen);
+		s2n((numBreakSigs*128), pbreaksiglen);
 		}
+
+	/* Add pin_activation */
+	if (tackextlen+1 > SSL_TACKEXT_MAXSIZE)
+		goto end;
+	if (pin_activation == 0)
+		tackext[tackextlen] = 0;
+	else
+		tackext[tackextlen] = 1;		
+	tackextlen += 1;
+		
 	ret = SSL_CTX_set_tack_extension(ctx, tackext, tackextlen);
 
 end:
