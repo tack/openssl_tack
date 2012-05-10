@@ -1,0 +1,8 @@
+
+OpenSSL TACK patch by Trevor Perrin.
+
+This patch enables the SSL server to respond with a TACK_Extension.  The
+TACK_Extension is set via the new "SSL_CTX_use_tack_files" command.
+
+The "openssl s_server" command can be used to run a TACK test server, using
+its new -tack, -tackbreak, and -pin_activation arguments.
