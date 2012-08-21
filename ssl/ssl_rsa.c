@@ -779,17 +779,18 @@ end:
 	
 
 #ifndef OPENSSL_NO_TACK
-/* Read a file that contains a TACK, and a file that contains a sequence
+/* Read a file that contains tacks, and a file that contains a sequence
  * of Break Signatures, that should be sent to the client via a "tack"
  * TLS Extension, if requested..
  */
 
 /* 8 break sigs of 128 bytes fits into 1 KB */
+#define MAX_TACKS 2
 #define MAX_BREAK_SIGS 8 
 
 int SSL_CTX_use_tack_files(SSL_CTX *ctx, const char *tackfile,
 							const char *breakfile, 
-							unsigned int pin_activation)
+							unsigned char activation_flags)
 	{
 	BIO *btack = NULL;
 	BIO *bbreak = NULL;
@@ -805,13 +806,19 @@ int SSL_CTX_use_tack_files(SSL_CTX *ctx, const char *tackfile,
 	   the input files, then it will be copied into the SSL CTX. */
 	unsigned char tackext[SSL_TACKEXT_MAXSIZE];
 	int tackextlen;
+
+	/* local variables for the tacks loop */
+	unsigned char* ptacklen;
+	int numTacks = 0;
 	
 	/* local variables for the break signatures loop */
 	unsigned char* pbreaksiglen;
 	int numBreakSigs = 0;
 	
+	ptacklen = &tackext[0];
 	tackext[0] = 0; /* In case there's no TACK, tacklen=0 */
-	tackextlen = 1; /* In case there's no TACK, len=|type+tacklen| */
+	tackext[1] = 0; /* In case there's no TACK, tacklen=0 */
+	tackextlen = 2; /* In case there's no TACK, len=|tacklen| */
 	
 	if (tackfile) 
 		{
@@ -828,29 +835,38 @@ int SSL_CTX_use_tack_files(SSL_CTX *ctx, const char *tackfile,
 			SSLerr(SSL_F_SSL_CTX_USE_CERTIFICATE_CHAIN_FILE,ERR_R_SYS_LIB);
 			goto end;
 			}
-		if (PEM_read_bio(btack, &name, &header, &data, &len) == 0)
+		for (numTacks=0; numTacks<MAX_TACKS; numTacks++) 
 			{
-			/* !!!TODO: Provide different error code in ssl.h/ssl_err.c */
-			SSLerr(SSL_F_SSL_CTX_USE_CERTIFICATE_CHAIN_FILE,ERR_R_PEM_LIB);	
-			goto end;
+			if (PEM_read_bio(btack, &name, &header, &data, &len) == 0)
+				{
+				/* There must be at least one tack in this file */
+				if (numTacks == 0)
+					{
+					/* !!!TODO: Provide different error code in ssl.h/ssl_err.c */
+					SSLerr(SSL_F_SSL_CTX_USE_CERTIFICATE_CHAIN_FILE,ERR_R_PEM_LIB);	
+					goto end;
+					}
+				else
+					break; /* We are at the end of this file */
+				}
+			if (strcmp(name, "TACK") != 0)
+				{
+				/* !!!TODO: Provide different error code in ssl.h/ssl_err.c */
+				SSLerr(SSL_F_SSL_CTX_USE_CERTIFICATE_CHAIN_FILE,ERR_R_SYS_LIB);
+				goto end;			
+				}
+			if (len != 166)			
+				{
+				/* !!!TODO: Provide different error code in ssl.h/ssl_err.c */
+				SSLerr(SSL_F_SSL_CTX_USE_CERTIFICATE_CHAIN_FILE,ERR_R_SYS_LIB);
+				goto end;			
+				}	
+			if (tackextlen+166 > SSL_TACKEXT_MAXSIZE)
+				goto end;
+			memcpy(&tackext[tackextlen], data, 166);
+			tackextlen += 166;
 			}
-		if (strcmp(name, "TACK") != 0)
-			{
-			/* !!!TODO: Provide different error code in ssl.h/ssl_err.c */
-			SSLerr(SSL_F_SSL_CTX_USE_CERTIFICATE_CHAIN_FILE,ERR_R_SYS_LIB);
-			goto end;			
-			}
-		if (len != 166)			
-			{
-			/* !!!TODO: Provide different error code in ssl.h/ssl_err.c */
-			SSLerr(SSL_F_SSL_CTX_USE_CERTIFICATE_CHAIN_FILE,ERR_R_SYS_LIB);
-			goto end;			
-			}	
-		if (tackextlen+166 > SSL_TACKEXT_MAXSIZE)
-			goto end;
-		tackext[0] = 166; /* tacklen = sizeof(TACK) */
-		memcpy(&tackext[tackextlen], data, 166);
-		tackextlen += 166;
+		s2n((numTacks*166), ptacklen);
 		}
 	
 	/* In case there's no break signatures, breaklen=0x0000 */
@@ -910,13 +926,10 @@ int SSL_CTX_use_tack_files(SSL_CTX *ctx, const char *tackfile,
 		s2n((numBreakSigs*128), pbreaksiglen);
 		}
 
-	/* Add pin_activation */
+	/* Add activation_flags */
 	if (tackextlen+1 > SSL_TACKEXT_MAXSIZE)
 		goto end;
-	if (pin_activation == 0)
-		tackext[tackextlen] = 0;
-	else
-		tackext[tackextlen] = 1;		
+	tackext[tackextlen] = activation_flags;
 	tackextlen += 1;
 		
 	ret = SSL_CTX_set_tack_extension(ctx, tackext, tackextlen);

@@ -300,7 +300,7 @@ static int keymatexportlen=20;
 #ifndef OPENSSL_NO_TACK
 static char* tack = NULL; /* TACK filename */
 static char* tackbreak = NULL; /* TACK_Break_Sigs filename */
-static int pin_activation = 0; /* Whether to set a TACK_Extension */
+static int activation_flags = 0; /* Whether to set a TACK_Extension */
 #endif
 #endif
 
@@ -569,9 +569,9 @@ static void sv_usage(void)
 	BIO_printf(bio_err," -keymatexport label   - Export keying material using label\n");
 	BIO_printf(bio_err," -keymatexportlen len  - Export len bytes of keying material (default 20)\n");
 #ifndef OPENSSL_NO_TACK
-	BIO_printf(bio_err," -tack arg      - Load TACK from file; send if requested\n");
-	BIO_printf(bio_err," -tackbreak arg - Load TACK Break Sigs from file; send if requested\n");
-	BIO_printf(bio_err," -pin_activation- Set the TACK pin_activation flag.\n");
+	BIO_printf(bio_err," -tack arg      - Load Tacks from file; send if requested\n");
+	BIO_printf(bio_err," -tackbreak arg - Load Break Sigs from file; send if requested\n");
+	BIO_printf(bio_err," -activation_flags - Set the TACK pin_activation flag.\n");
 #endif
 	}
 
@@ -1369,9 +1369,10 @@ int MAIN(int argc, char *argv[])
 				if (--argc < 1) goto bad;
 				tackbreak = *(++argv);
 			}
-		else if (strcmp(*argv,"-pin_activation") == 0)
+		else if (strcmp(*argv,"-activation_flags") == 0)
 			{
-				pin_activation = 1;
+				if (--argc < 1) goto bad;
+				activation_flags = atol(*(++argv));
 			}
 #endif
 		else
@@ -1914,7 +1915,7 @@ bad:
 #ifndef OPENSSL_NO_TACK
 	if (tack || tackbreak)
 		{
-		SSL_CTX_use_tack_files(ctx, tack, tackbreak, pin_activation);	
+		SSL_CTX_use_tack_files(ctx, tack, tackbreak, activation_flags);	
 		}
 #endif
 #endif

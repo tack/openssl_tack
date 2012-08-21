@@ -974,9 +974,9 @@ struct ssl_ctx_st
         STACK_OF(SRTP_PROTECTION_PROFILE) *srtp_profiles;  
 
 # ifndef OPENSSL_NO_TACK
- /* 1 byte TACKlen, 2 bytes Breaklen, 1 byte pin_activation, 
-    166 bytes TACK, 1024 bytes Break sigs */
-#define SSL_TACKEXT_MAXSIZE (4 + 166 + 1024)
+ /* 2 byte TACKlen, 2 bytes Breaklen, 1 byte activation_flags, 
+    332 bytes TACK, 1024 bytes Break sigs */
+#define SSL_TACKEXT_MAXSIZE (5 + 332 + 1024)
 	unsigned char tackext[SSL_TACKEXT_MAXSIZE];
 	unsigned int tackextlen;
 # endif
@@ -1073,7 +1073,7 @@ int SSL_CTX_set_tack_extension(SSL_CTX *ctx,
 			unsigned char *tackext, const unsigned int tackextlen);
 int SSL_CTX_use_tack_files(SSL_CTX *ctx, 
 			const char *tackfile, const char *breakfile, 
-			unsigned int pin_activation);
+			unsigned char activation_flags);
 #endif
 
 #ifndef OPENSSL_NO_PSK
