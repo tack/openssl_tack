@@ -1,8 +1,19 @@
-
 OpenSSL TACK patch by Trevor Perrin.
 
 This patch enables the SSL server to respond with a TACK_Extension.  The
 TACK_Extension is set via the new "SSL_CTX_use_tack_files" command.
 
 The "openssl s_server" command can be used to run a TACK test server, using
-its new -tack, -tackbreak, and -pin_activation arguments.
+its new -tack, -tackbreak, and -activation_flags arguments.
+
+For example, if you have tlslite installed in ~/tlslite, you can run a test server with:
+
+openssl s_server -accept 4443 \
+  -cert ~/tlslite/tests/serverX509Cert.pem \
+  -key ~/tlslite/tests/serverX509Key.pem  \
+  -tack ~/tlslite/tests/TACKs.pem \
+  -activation_flags 3
+
+Then contact it with:
+
+tls.py client localhost:4443
