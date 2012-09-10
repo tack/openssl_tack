@@ -783,7 +783,6 @@ end:
  * "tack_ext" TLS Extension, if requested. */
 
 #define MAX_TACKS 2
-#define MAX_BREAK_SIGS 8 
 
 int SSL_CTX_use_tack_files(SSL_CTX *ctx, const char *tackfile,
 							unsigned char activation_flags)
