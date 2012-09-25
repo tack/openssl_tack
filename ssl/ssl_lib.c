@@ -1630,11 +1630,11 @@ void SSL_CTX_set_next_proto_select_cb(SSL_CTX *ctx, int (*cb) (SSL *s, unsigned 
 #ifndef OPENSSL_NO_TACK
 int SSL_CTX_set_tack_extension(SSL_CTX *ctx, unsigned char *tackext, const unsigned int tackextlen)
 	{
-	if (tackextlen > (SSL_TACKEXT_MAXSIZE))
-	{
-		/* !!! SOME ERROR MSG */
+	if (tackextlen > SSL_TACKEXT_MAXSIZE)
+		{
+		SSLerr(SSL_F_SSL_CTX_SET_TACK_EXTENSION,SSL_R_BAD_TACK_EXTENSION);
 		return 0;
-	}
+		}
 	memcpy(ctx->tackext, tackext, tackextlen);
 	ctx->tackextlen = tackextlen;
 	return 1;	

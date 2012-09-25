@@ -1908,7 +1908,7 @@ bad:
 #ifndef OPENSSL_NO_TACK
 	if (tack)
 		{
-		SSL_CTX_use_tack_files(ctx, tack, activation_flags);	
+		SSL_CTX_use_tack_file(ctx, tack, activation_flags);	
 		}
 #endif
 #endif

@@ -1071,7 +1071,7 @@ void SSL_get0_next_proto_negotiated(const SSL *s,
 */
 int SSL_CTX_set_tack_extension(SSL_CTX *ctx, 
 			unsigned char *tackext, const unsigned int tackextlen);
-int SSL_CTX_use_tack_files(SSL_CTX *ctx, 
+int SSL_CTX_use_tack_file(SSL_CTX *ctx, 
 			const char *tackfile, unsigned char activation_flags);
 #endif
 
@@ -2208,6 +2208,7 @@ void ERR_load_SSL_strings(void);
 #define SSL_F_SSL_CTX_SET_PURPOSE			 226
 #define SSL_F_SSL_CTX_SET_SESSION_ID_CONTEXT		 219
 #define SSL_F_SSL_CTX_SET_SSL_VERSION			 170
+#define SSL_F_SSL_CTX_SET_TACK_EXTENSION		 316
 #define SSL_F_SSL_CTX_SET_TRUST				 229
 #define SSL_F_SSL_CTX_USE_CERTIFICATE			 171
 #define SSL_F_SSL_CTX_USE_CERTIFICATE_ASN1		 172
@@ -2220,6 +2221,7 @@ void ERR_load_SSL_strings(void);
 #define SSL_F_SSL_CTX_USE_RSAPRIVATEKEY			 177
 #define SSL_F_SSL_CTX_USE_RSAPRIVATEKEY_ASN1		 178
 #define SSL_F_SSL_CTX_USE_RSAPRIVATEKEY_FILE		 179
+#define SSL_F_SSL_CTX_USE_TACK_FILE			 317
 #define SSL_F_SSL_DO_HANDSHAKE				 180
 #define SSL_F_SSL_GET_NEW_SESSION			 181
 #define SSL_F_SSL_GET_PREV_SESSION			 217
@@ -2327,6 +2329,8 @@ void ERR_load_SSL_strings(void);
 #define SSL_R_BAD_SSL_FILETYPE				 124
 #define SSL_R_BAD_SSL_SESSION_ID_LENGTH			 125
 #define SSL_R_BAD_STATE					 126
+#define SSL_R_BAD_TACK					 371
+#define SSL_R_BAD_TACK_EXTENSION			 372
 #define SSL_R_BAD_WRITE_RETRY				 127
 #define SSL_R_BIO_NOT_SET				 128
 #define SSL_R_BLOCK_CIPHER_PAD_IS_WRONG			 129
